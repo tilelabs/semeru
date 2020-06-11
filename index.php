@@ -1,40 +1,53 @@
 <?php
 $conn = mysqli_connect("localhost","root","", "dfs_semeru");
 
-$daftar_pos = mysqli_query($conn, "SELECT * FROM pos");
+$daftar_pos = mysqli_fetch_all(mysqli_query($conn, "SELECT * FROM pos"), MYSQLI_ASSOC);
 $daftar_rute = mysqli_fetch_all(mysqli_query($conn, "SELECT * FROM rute"), MYSQLI_ASSOC);
 
+function getPos($id) {
+    global $daftar_pos;
+
+    $result = array_values(array_filter($daftar_pos, function($item) use ($id) {
+        return $item['id'] == $id;
+    }));
+
+    return $result[0];
+}
+
 if (!empty($_POST)) {
+    $dari = $_POST['dari'];
+    $tujuan = $_POST['tujuan'];
 
 	$rute = "";
 	foreach ($daftar_rute as $key => $item) {
-	    if (in_array($_POST['dari'], explode(',', $item['data_pos']))) {
+	    if (in_array($dari, explode(',', $item['data_pos']))) {
 	        $rute = $key;
 	    }
 	}
+	$pilihan_rute = explode(',', $daftar_rute[$rute]['data_pos']);
 
-	if (!in_array($_POST['tujuan'], explode(',', $daftar_rute[$rute]['data_pos']))) {
+	if (!in_array($tujuan, $pilihan_rute)) {
 	    echo 'Maaf, tujuan di luar rute!';
 	}
 
-	$pilihan_rute = $daftar_rute[$rute];
-
 	$total = 0;
 	$min_key = 0;
-	$min = (getPos($pilihan_rute[0]))['jarak'];
+	$min = getPos($dari)['jarak'];
 	foreach ($pilihan_rute as $key => $item) {
 	    $pos = getPos($item);
 	    $total += $pos['jarak'];
-	    if ($pos['jarak'] < $min) {
+	    if ($pos['jarak'] < $min && $pos['jarak'] > 0) {
 	        $min = $pos['jarak'];
 	        $min_key = $key;
 	    } 
-	    print_r($pos). "\n";
-	    if ($item == $end) break;
+	    if ($item == $tujuan) break;
+         
 	}
 
-	echo 'Jarak terdekat: ' . $min_key . "\n";
-	echo 'Total jarak yg ditempuh: ' . $total;
+    $prev_min_pos = getPos($pilihan_rute[$min_key-1]);
+    $min_pos = getPos($pilihan_rute[$min_key]);
+	echo 'Jarak terdekat: ' . $prev_min_pos['nama_pos'] .' ke '. $min_pos['nama_pos'] . ' (' . $min_pos['jarak'] . " km)" . "<br>";
+	echo 'Total jarak yg ditempuh: ' . $total . ' km';
 }
 
 ?>
